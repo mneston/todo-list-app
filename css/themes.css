@@ -1,0 +1,44 @@
+/* ===== TEMA DARK ===== */
+[data-theme='dark'] {
+  --background: #0f172a;
+  --surface: #1e293b;
+  --surface-hover: #334155;
+  --border-color: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+
+  --primary-color: #6366f1;
+  --primary-dark: #4f6e5;
+  --primary-shadow: rgba(99, 102, 21, 0.1);
+  --secondary-color: #8b5cf6;
+
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: var(--text-primary);
+}
+
+/* ===== TEMA LIGHT ===== */
+[data-theme='light'] {
+  --background: #ffffff;
+  --surface: #f8fafc;
+  --surface-hover: #f1f5f9;
+  --border-color: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+
+  --primary-color: #6366f1;
+  --primary-dark: #4f46e5;
+  --primary-shadow: rgba(99, 102, 241, 0.1);
+  --secondary-color: #8b5cf6;
+
+  background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+  color: var(--text-primary);
+}
+
+/* Ícone do tema, muda conforme o tema */
+[data-theme='dark'] .theme-icon::before {
+  content: '🌙';
+}
+
+[data-theme='light'] .theme-icon::before {
+  content: '☀️';
+}
