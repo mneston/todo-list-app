@@ -4,6 +4,8 @@ let currentFilter = 'all';
 let editingTaskId = null;
 let taskToDelete = null;
 let isToggling = false;
+let draggedTaskId = null;
+let draggedOverTaskId = null;
 
 // ===== ELEMENTOS DO DOM ======
 let tasksContainer = document.getElementById('tasks-container');
@@ -83,6 +85,42 @@ function setupEventListeners() {
   });
 }
 
+function setupDragAndDrop() {
+  const taskItems = document.querySelectorAll('.task-item');
+
+  taskItems.forEach(item => {
+    item.addEventListener('dragstart', handleDragStart);
+    item.addEventListener('dragend', handleDragEnd);
+    item.addEventListener('dragover', handleDragOver);
+    item.addEventListener('dragenter', handleDragEnter);
+    item.addEventListener('dragleave', handleDragLeave);
+    item.addEventListener('drop', handleDrop);
+  });
+}
+
+function setupDragAndDropMobile() {
+  const isTouchDevice = 'ontouchstart' in window;
+
+  if (isTouchDevice && typeof Draggable !== 'undefined') {
+    const sortable = new Draggable.Sortable(tasksContainer, {
+      draggable: '.task-item',
+      handle: '.drag-handle',
+      mirror: {
+        constrainDimensions: true,
+      },
+    });
+
+    sortable.on('sortable:stop', e => {
+      const draggedId = e.dragEvent.data.source.dataset.taskId;
+      const targetId = e.dragEvent.data.over?.dataset.taskId;
+
+      if (targetId && draggedId !== targetId) reorderTasks(draggedId, targetId);
+    });
+  } else {
+    setupDragAndDrop();
+  }
+}
+
 // ===== ADICIONAR/EDITAR TAREFA ======
 function handleAddTask(e) {
   e.preventDefault();
@@ -140,6 +178,70 @@ function handleAddTask(e) {
   showToast('Tarefa adicionada!', 'success');
 }
 
+function handleDragStart(e) {
+  draggedTaskId = this.dataset.taskId;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragEnd(e) {
+  this.classList.remove('dragging');
+
+  document.querySelectorAll('.task-item').forEach(item => item.classList.remove('drag-over'));
+
+  draggedTaskId = null;
+  draggedOverTaskId = null;
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) e.preventDefault();
+
+  e.dataTransfer.dropEffect = 'move';
+
+  return false;
+}
+
+function handleDragEnter(e) {
+  const targetTaskId = this.dataset.taskId;
+
+  if (draggedTaskId !== targetTaskId) {
+    this.classList.add('drag-over');
+
+    draggedOverTaskId = targetTaskId;
+  }
+}
+
+function handleDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) e.stopPropagation();
+
+  const targetTaskId = this.dataset.taskId;
+
+  if (draggedTaskId !== targetTaskId) reorderTasks(draggedTaskId, targetTaskId);
+
+  return false;
+}
+
+function reorderTasks(draggedId, targetId) {
+  const draggedIndex = tasks.findIndex(t => t.id === draggedId);
+  const targetIndex = tasks.findIndex(t => t.id === targetId);
+
+  if (draggedIndex === -1 || targetIndex === -1) return;
+
+  const [draggedTask] = tasks.splice(draggedIndex, 1);
+
+  tasks.splice(targetIndex, 0, draggedTask);
+
+  saveTasks(tasks);
+  renderTasks();
+
+  showToast('Ordem atualizada!', 'success');
+}
+
 // ===== RENDERIZAR TAREFAS ======
 function renderTasks() {
   let filteredTasks = getFilteredTasks();
@@ -155,6 +257,7 @@ function renderTasks() {
   tasksContainer.innerHTML = filteredTasks.map(task => createTaskHTML(task)).join('');
 
   attachTaskEventListeners();
+  setupDragAndDropMobile();
 }
 
 // ===== CRIAR HTML DA TAREFA ======
@@ -178,7 +281,8 @@ function createTaskHTML(task) {
     : '';
 
   return `
-    <div class="task-item ${task.completed ? 'completed' : ''}" data-task-id="${task.id}">
+    <div class="task-item ${task.completed ? 'completed' : ''}" data-task-id="${task.id}" draggable="true">
+      <div class="drag-handle" title="Arrastar para reordenar">⋮⋮</div>
       <div class="task-checkbox ${task.completed ? 'checked' : ''}" data-action="toggle"></div>
       <div class="task-content">
         <div class="task-text">${task.text}</div>
