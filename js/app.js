@@ -2,14 +2,16 @@
 let tasks = [];
 let currentFilter = 'all';
 let editingTaskId = null;
+let taskToDelete = null;
+let isToggling = false;
 
 // ===== ELEMENTOS DO DOM ======
+let tasksContainer = document.getElementById('tasks-container');
 const taskForm = document.getElementById('task-form');
 const taskInput = document.getElementById('task-input');
 const taskPriority = document.getElementById('task-priority');
 const taskDate = document.getElementById('task-date');
 const taskCategory = document.getElementById('task-category');
-const tasksContainer = document.getElementById('tasks-container');
 const emptyState = document.getElementById('empty-state');
 const filterButtons = document.querySelectorAll('.filter-btn');
 const searchInput = document.getElementById('search-input');
@@ -17,6 +19,7 @@ const themeToggle = document.getElementById('theme-toggle');
 const confirmModal = document.getElementById('confirm-modal');
 const modalCancel = document.getElementById('modal-cancel');
 const modalConfirm = document.getElementById('modal-confirm');
+const btnCancelEdit = document.getElementById('btn-cancel-edit');
 
 // Badges e estatisticas
 const badgeAll = document.getElementById('badge-all');
@@ -59,9 +62,28 @@ function setupEventListeners() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeModal();
   });
+
+  btnCancelEdit.addEventListener('click', () => {
+    cancelEdit();
+
+    btnCancelEdit.classList.add('hidden');
+
+    showToast('Edição cancelada', 'info');
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (editingTaskId) {
+        cancelEdit();
+        document.getElementById('btn-cancel-edit').classList.add('hidden');
+      }
+
+      closeModal();
+    }
+  });
 }
 
-// ===== ADICIONAR TAREFA ======
+// ===== ADICIONAR/EDITAR TAREFA ======
 function handleAddTask(e) {
   e.preventDefault();
 
@@ -72,9 +94,33 @@ function handleAddTask(e) {
     return;
   }
 
+  if (editingTaskId) {
+    const task = tasks.find(t => t.id === editingTaskId);
+
+    if (task) {
+      task.text = sanitizeText(text);
+      task.priority = taskPriority.value;
+      task.date = taskDate.value;
+      task.category = taskCategory.value.trim();
+      task.updateAt = new Date().toISOString();
+
+      saveTasks(tasks);
+      cancelEdit();
+      renderTasks();
+      updateStats();
+
+      const submitBtn = taskForm.querySelector('.btn-add');
+      submitBtn.innerHTML = '<span>+</span>';
+
+      showToast('Tarefa atualizada!', 'success');
+    }
+
+    return;
+  }
+
   const newTask = {
     id: generateId(),
-    text: sanitizeInput(text),
+    text: sanitizeText(text),
     completed: false,
     priority: taskPriority.value,
     date: taskDate.value,
@@ -106,7 +152,7 @@ function renderTasks() {
 
   emptyState.classList.add('hidden');
 
-  taskContainer.innerHTML = filteredTasks.map(task => createTaskHTML(task)).join('');
+  tasksContainer.innerHTML = filteredTasks.map(task => createTaskHTML(task)).join('');
 
   attachTaskEventListeners();
 }
@@ -152,33 +198,62 @@ function createTaskHTML(task) {
 
 // ===== EVENT LISTENERS DAS TAREFAS ======
 function attachTaskEventListeners() {
-  tasksContainer.addEventListener('click', e => {
-    const action = e.target.closest('[data-action]')?.dataset.action;
-    const taskItem = e.target.closest('.task-item');
+  const newContainer = tasksContainer.cloneNode(true);
 
-    if (!taskItem || !action) return;
+  tasksContainer.parentNode.replaceChild(newContainer, tasksContainer);
 
-    const taskId = taskItem.dataset.taskId;
+  const oldContainer = tasksContainer;
+  tasksContainer = newContainer;
 
-    switch (action) {
-      case 'toggle':
-        toggleTask(taskId);
-        break;
-      case 'edit':
-        editTask(taskId);
-        break;
-      case 'delete':
-        openDeleteModal(taskId);
-        break;
-    }
-  });
+  tasksContainer.addEventListener('click', handleTaskClick);
+}
+
+function handleTaskClick(e) {
+  const actionElement = e.target.closest('[data-action]');
+
+  if (!actionElement) return;
+
+  e.stopPropagation();
+  e.preventDefault();
+
+  const action = actionElement.dataset.action;
+  const taskItem = actionElement.closest('.task-item');
+
+  if (!taskItem) return;
+
+  const taskId = taskItem.dataset.taskId;
+
+  switch (action) {
+    case 'toggle':
+      toggleTask(taskId);
+      break;
+    case 'edit':
+      editTask(taskId);
+      break;
+    case 'delete':
+      openDeleteModal(taskId);
+      break;
+  }
 }
 
 // ===== TOGGLE TAREFA (COMPLETAR/REABRIR) ======
+
 function toggleTask(taskId) {
+  if (isToggling) {
+    console.log('⚠️ Toggle já em execução, ignorando duplicata');
+    return;
+  }
+
+  isToggling = true;
+
   const task = tasks.find(t => t.id === taskId);
 
-  if (!task) return;
+  if (!task) {
+    isToggling = false;
+    return;
+  }
+
+  console.log(`✅ Toggling task ${taskId} -> ${!task.completed}`);
 
   task.completed = !task.completed;
   saveTasks(tasks);
@@ -190,16 +265,64 @@ function toggleTask(taskId) {
     task.completed ? 'Tarefa concluída! 🎉' : 'Tarefa reaberta!',
     task.completed ? 'success' : 'info',
   );
+
+  setTimeout(() => (isToggling = false), 150);
 }
 
 // ===== EDITAR TAREFA ======
 function editTask(taskId) {
-  showToast('Função de edição em desenvolvimento...', 'info');
+  const task = tasks.find(t => t.id === taskId);
+
+  if (!task) return;
+
+  editingTaskId = taskId;
+
+  taskInput.value = task.text;
+  taskPriority.value = task.priority;
+  taskDate.value = task.date || '';
+  taskCategory.value = task.category || '';
+
+  const submitBtn = taskForm.querySelector('.btn-add');
+  submitBtn.innerHTML = '<span>✓</span>';
+  submitBtn.computedStyleMap.background = 'linear-gradient(135deg, #10b981, #059669)';
+
+  taskInput.focus();
+  taskInput.select();
+
+  highlightEditingTask(taskId);
+
+  document.getElementById('btn-cancel-edit').classList.remove('hidden');
+
+  showToast('Editando tarefa...', 'info');
+}
+
+function highlightEditingTask(taskId) {
+  document.querySelectorAll('.task-item').forEach(item => (item.computedStyleMap.border = ''));
+
+  const taskItem = document.querySelector(`[data-task-id="${taskId}"]`);
+
+  if (taskItem) {
+    taskItem.computedStyleMap.border = '2px solid #3b82f6';
+    taskItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function cancelEdit() {
+  editingTaskId = null;
+
+  taskForm.reset();
+  taskPriority.value = 'medium';
+
+  const submitBtn = taskForm.querySelector('.btn-add');
+  submitBtn.innerHtml = '<span>+</span>';
+  submitBtn.computedStyleMap.background = '';
+
+  document.querySelectorAll('.task-item').forEach(item => (item.computedStyleMap.border = ''));
+
+  document.getElementById('btn-cancel-edit').classList.add('hidden');
 }
 
 // ===== EXCLUIR TAREFA ======
-let taskToDelete = null;
-
 function openDeleteModal(taskId) {
   taskToDelete = taskId;
   confirmModal.classList.remove('hidden');
@@ -225,10 +348,11 @@ function confirmDelete() {
 // ===== FILTROS ======
 function handleFilterChange(e) {
   const filter = e.currentTarget.dataset.filter;
+
   currentFilter = filter;
 
   filterButtons.forEach(btn => btn.classList.remove('active'));
-  e.currentFilter.classList.add('active');
+  e.currentTarget.classList.add('active');
 
   renderTasks();
 }

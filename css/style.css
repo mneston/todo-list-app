@@ -190,6 +190,44 @@ body {
   transform: scale(0.95);
 }
 
+.btn-add.editing {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+}
+
+.btn-cancel {
+  width: 48px;
+  height: 48px;
+  background: #64748b;
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-cancel:hover {
+  background: #477569;
+  transform: scale(1.05);
+}
+
+.btn-cancel.hidden {
+  display: none;
+}
+
 /* Opções da tarefa */
 .task-options {
   display: grid;
@@ -306,11 +344,11 @@ body {
 }
 
 /* ===== LISTA DE TAREFAS ===== */
-.task-section {
+.tasks-section {
   margin-bottom: var(--spacing-xl);
 }
 
-.task-container {
+.tasks-container {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
@@ -352,6 +390,18 @@ body {
 
 .task-item.completed .task-text {
   text-decoration: line-through;
+}
+
+.task-item.editing {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 26, 0.1);
+}
+
+/* Indicador de data vencida */
+.task-date.overdue {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  font-weight: 700;
 }
 
 /* Checkbox customizado */

@@ -29,9 +29,12 @@
       <section class="add-task-section">
         <form id="task-form" class="task-form">
           <div class="form-group">
-            <input type="text" class="task-input" placeholder="Adicionar nova tarefa..." autocomplete="off" required>
+            <input type="text" id="task-input" class="task-input" placeholder="Adicionar nova tarefa..." autocomplete="off" required>
             <button type="submit" class="btn-add" aria-label="Adicionar tarefa">
               <span>+</span>
+            </button>
+            <button type="button" id="btn-cancel-edit" class="btn-cancel hidden" aria-label="Cancelar edição">
+              <span>X</span>
             </button>
           </div>
 
@@ -69,7 +72,7 @@
       <section class="controls-section">
         <div class="filter-buttons">
           <button class="filter-btn active" data-filter="all">
-            Todas <span class="badge" id="badge-active">0</span>
+            Todas <span class="badge" id="badge-all">0</span>
           </button>
           <button class="filter-btn" data-filter="active">
             Ativas <span class="badge" id="badge-active">0</span>
@@ -110,7 +113,7 @@
         </div>
         <div class="stat-card">
           <span class="stat-label">Concluídas</span>
-          <span class="stat-value" id="stat-conpleted">0</span>
+          <span class="stat-value" id="stat-completed">0</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Progresso</span>
